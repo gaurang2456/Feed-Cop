@@ -1,0 +1,8 @@
+.git/
+.vscode/
+*.zip
+create-icons.html
+.web-ext-ignore
+.gitignore
+README.md
+INSTALLATION.md

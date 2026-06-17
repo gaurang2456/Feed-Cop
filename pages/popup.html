@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FeedCop - filter out cringe content using AI, in realtime.</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #1f2937;
+            width: 320px;
+            min-height: 500px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .container {
+            padding: 16px;
+            padding-bottom: 24px;
+            min-height: calc(100vh - 40px);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 12px 16px;
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .logo-icon {
+            width: 22px;
+            height: 22px;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+        }
+
+        .settings-icon {
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 50%;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        .settings-icon:hover {
+            background-color: rgba(255, 255, 255, 0.25);
+            transform: rotate(30deg) scale(1.1);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+
+        .card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            margin-bottom: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .main-toggle-section {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #fef3c7 100%);
+            border-radius: 16px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .main-toggle-section.active {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-color: rgba(16, 185, 129, 0.3);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+        }
+
+        .toggle-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toggle-status {
+            flex: 1;
+        }
+
+        .status-text {
+            font-size: 16px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .status-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .main-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 32px;
+        }
+
+        .main-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .main-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+            transition: all 0.4s;
+            border-radius: 32px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 3px;
+            bottom: 3px;
+            background: linear-gradient(135deg, #ffffff, #f8fafc);
+            transition: all 0.4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        input:checked + .main-slider {
+            background: linear-gradient(135deg, #48CAE4, #0077BE);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 20px rgba(72, 202, 228, 0.3);
+        }
+
+        input:checked + .main-slider:before {
+            transform: translateX(28px);
+            background: linear-gradient(135deg, #ffffff, #f0f9ff);
+        }
+
+        .main-switch:hover .main-slider {
+            transform: scale(1.05);
+        }
+
+        .stats {
+            font-size: 13px;
+            color: #4a5568;
+            line-height: 1.6;
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f3e5f5 100%);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+            font-size: 18px;
+            display: block;
+        }
+
+        .filtered-content {
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .content-title {
+            font-weight: 500;
+            color: #0077b5;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .post-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .post-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .shield-icon {
+            color: #0077b5;
+            opacity: 0.8;
+        }
+
+        .refresh-button {
+            background: none;
+            border: none;
+            color: #0077b5;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .refresh-button:hover {
+            background: #e1f0f7;
+        }
+
+        .error-card {
+            background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%);
+            border: 1px solid #ff5722;
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #d32f2f;
+            box-shadow: 0 4px 12px rgba(255, 87, 34, 0.15);
+        }
+
+        .error-card svg {
+            flex-shrink: 0;
+        }
+
+        .filter-mode {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .filter-mode-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .toggle-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .toggle-slider {
+            position: relative;
+            width: 200px;
+            height: 42px;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border-radius: 21px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 8px rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .toggle-option {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 14px;
+            gap: 6px;
+            transition: all 0.3s ease;
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+        }
+
+        .toggle-slider.blur #blur-option {
+            color: white;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-slider.remove #remove-option {
+            color: white;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-slider-button {
+            position: absolute;
+            width: 50%;
+            height: 36px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            left: 3px;
+            top: 3px;
+            transition: all 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            z-index: 0;
+        }
+
+        .toggle-slider.remove .toggle-slider-button {
+            left: calc(50% - 3px);
+        }
+
+        .mode-description {
+            font-size: 12px;
+            color: #64748b;
+            text-align: center;
+            margin-top: 8px;
+            min-height: 30px;
+        }
+
+        .toggle-option svg {
+            stroke-width: 2.5;
+        }
+
+        /* Mute Words Section */
+        .mute-words-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .mute-words-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .mute-words-title {
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .mute-words-count {
+            font-size: 12px;
+            color: #667eea;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            padding: 4px 12px;
+            border-radius: 16px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            font-weight: 500;
+        }
+
+        .mute-input-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .mute-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .mute-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        }
+
+        .add-word-btn {
+            background: linear-gradient(135deg, #48CAE4 0%, #0077BE 100%);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 4px 12px rgba(72, 202, 228, 0.3);
+        }
+
+        .add-word-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(72, 202, 228, 0.4);
+        }
+
+        .add-word-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .muted-words-container {
+            max-height: 120px;
+            overflow-y: auto;
+            padding: 2px;
+        }
+
+        .muted-words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .muted-word-tag {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f4ff 100%);
+            color: #667eea;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.1);
+        }
+
+        .muted-word-tag:hover {
+            background: linear-gradient(135deg, #dcedc8 0%, #e1f5fe 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .remove-word-btn {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .remove-word-btn:hover {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px dashed #e5e7eb;
+        }
+
+        .clear-all-btn {
+            background: none;
+            border: 1px solid #e5e7eb;
+            color: #64748b;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .clear-all-btn:hover {
+            background: #fee2e2;
+            border-color: #ef4444;
+            color: #dc2626;
+        }
+
+        .muted-words-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .muted-words-container::-webkit-scrollbar-track {
+            background: #f1f6f9;
+            border-radius: 2px;
+        }
+
+        .muted-words-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+
+        .muted-words-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Main body scrollbar */
+        body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        body::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        body::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">FC</div>
+                FeedCop
+            </div>
+            <svg class="settings-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                </path>
+            </svg>
+        </div>
+
+        <!-- error card if api key not found -->
+        <div class="error-card">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            Add your Groq API key in settings
+        </div>
+
+        <div class="card">
+            <div class="main-toggle-section">
+                <div class="toggle-header">
+                    <div class="toggle-status">
+                        <span class="status-text" id="status-text">Extension Disabled</span>
+                        <span class="status-subtitle">Click to start filtering cringe content</span>
+                    </div>
+                    <label class="main-switch">
+                        <input type="checkbox" id="toggle-switch">
+                        <span class="main-slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="cringe-count">0</span>
+                    Cringe Dodged
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="time-saved">0m</span>
+                    Time Saved
+                </div>
+            </div>
+
+            <div class="filter-mode">
+                <div class="filter-mode-title">Filter Mode</div>
+                <div class="toggle-container">
+                    <div class="toggle-slider">
+                        <div class="toggle-option" id="blur-option">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M8 9l-5 5"></path>
+                                <path d="M16 9l5 5"></path>
+                                <path d="M9 16l-5 -5"></path>
+                                <path d="M14 16l5 -5"></path>
+                            </svg>
+                            <span>Blur</span>
+                        </div>
+                        <div class="toggle-option" id="remove-option">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                            </svg>
+                            <span>Vanish</span>
+                        </div>
+                        <div class="toggle-slider-button"></div>
+                    </div>
+                </div>
+                <div class="mode-description" id="mode-description">
+                    Blurs cringe until you decide
+                </div>
+            </div>
+
+            <!-- Mute Words Section -->
+            <div class="mute-words-section">
+                <div class="mute-words-header">
+                    <div class="mute-words-title">Mute Words</div>
+                    <div class="mute-words-count" id="mute-count">0 words</div>
+                </div>
+
+                <div class="mute-input-container">
+                    <input type="text" class="mute-input" id="mute-input" placeholder="Add word to mute..."
+                        maxlength="30">
+                    <button class="add-word-btn" id="add-word-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add
+                    </button>
+                </div>
+
+                <div class="muted-words-container" id="muted-words-container">
+                    <div class="muted-words-list" id="muted-words-list"></div>
+                    <div class="empty-state" id="empty-state">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;">
+                            <path d="M9 12l2 2 4-4" />
+                            <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+                        </svg>
+                        <div>No muted words yet</div>
+                        <div style="margin-top: 4px; font-size: 11px; opacity: 0.7;">Add words to automatically filter
+                            posts</div>
+                    </div>
+                    <button class="clear-all-btn" id="clear-all-btn" style="display: none;">
+                        Clear All Words
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../scripts/popup.js"></script>
+</body>
+
+</html>
